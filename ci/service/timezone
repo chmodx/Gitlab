@@ -1,0 +1,11 @@
+#!/sbin/openrc-run
+description="Sets the timezone of of the machine"
+
+start()
+{
+  if test -n "$TZ" ; then
+    ln -sf /usr/share/zoneinfo/$TZ /etc/localtime
+    echo "$TZ" >  /etc/timezone
+  fi
+  return 0
+}

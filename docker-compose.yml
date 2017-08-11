@@ -1,0 +1,80 @@
+version: "2"
+services:
+    # Gitlab
+    gitlab:
+        restart: always
+        image: gitlab/gitlab-ce:latest
+        container_name: "gitlab"
+        environment:
+          GITLAB_OMNIBUS_CONFIG: |
+            external_url "${GITLAB_EXTERNAL_SCHEMA}://${GITLAB_EXTERNAL_HOST}:${GITLAB_EXTERNAL_PORT}"
+            gitlab_rails['gitlab_shell_ssh_port'] = $GITLAB_PUBLISH_PORT_SSH
+            nginx['enable'] = false
+            web_server['external_users'] = ['www-data']
+            gitlab_workhorse['listen_network'] = "tcp"
+            gitlab_workhorse['listen_addr'] = "0.0.0.0:8181"
+        ports: 
+            - "${GITLAB_PUBLISH_PORT_SSH}:22"  
+        networks:
+            - backend 
+        expose:
+            - "8181"
+        volumes:
+            - ${GITLAB_CONF}:/etc/gitlab
+            - ${GITLAB_LOGS}:/var/log/gitlab
+            - ${GITLAB_DATA}:/var/opt/gitlab
+    # Registry service
+    registry:
+        restart: always
+        image: registry:2
+        container_name: "registry"    
+        networks:
+            - backend
+        expose:
+            - "5000"
+        volumes:
+            - ${REGISTRY_DATA}:/var/lib/registry         
+    # Gitlab runner on dind container
+    runner-host:
+        restart: always
+        build: ./ci
+        container_name: "runner-host"
+        depends_on:
+            - gitlab 
+        networks:
+            - shared
+        volumes:
+            - ./ci/config.toml:/etc/gitlab-runner/config.toml
+        ports:
+            - "9910-9919:9910-9919" 
+        privileged: true
+    # Non-bundled proxy         
+    proxy:
+        restart: always
+        build: 
+          context: ./proxy
+          args:
+              - GITLAB_HOST=${GITLAB_EXTERNAL_HOST}
+              - REGISTRY_HOST=${REGISTRY_EXTERNAL_HOST} 
+              - SSL=${SSL}  
+              - LOGIN=${REGISTRY_LOGIN}
+              - PASSWD=${REGISTRY_PASSWD}  
+        depends_on:
+            - gitlab
+            - registry  
+        ports:
+            - "${PUBLISH_PORT_HTTP}:80"
+            - "${PUBLISH_PORT_HTTPS}:443" 
+        networks:
+            - frontend
+            - backend  
+        volumes:
+            - ${PROXY_LOGS}:/var/log/nginx 
+            - ./cert:/cert  
+networks:
+  backend:
+      driver: bridge 
+  frontend:
+      driver: bridge
+  shared:
+      driver: bridge

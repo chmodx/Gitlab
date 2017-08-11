@@ -1,0 +1,9 @@
+concurrent = 1
+check_interval = 60
+
+[[runners]]
+  name = "shell_example"
+  url = "http://ci.example.com/"
+  token = "token"
+  executor = "shell"
+  [runners.cache]
