@@ -9,5 +9,4 @@ start()  {
     ebegin "Starting gitlab-runner"
     start-stop-daemon --start --exec /usr/bin/gitlab-runner -- "run" "--user=gitlab-runner" "--working-directory=/home/gitlab-runner" "--config=/etc/gitlab-runner/config.toml" "--syslog"
     eend $?
-    #gitlab-runner run --user=gitlab-runner --working-directory=/home/gitlab-runner --syslog 
 }
